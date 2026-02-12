@@ -1,4 +1,4 @@
-# Word Search 1v1 Go Websocket Server
+# Word Search 1v1 Go WebSocket Server
 A Go WebSocket Server for a 1v1 Word Search lockout game.
 
 Compile:
