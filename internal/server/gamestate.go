@@ -12,6 +12,7 @@ type GameState struct {
 	Board [][]rune
 	Words []string				
 	Claimed map[string]string 	// word -> playerID
+	wordCoords map[string]WordCoords
 	Score [2]int
 	GameStarted bool
 	wordlist []string
@@ -23,6 +24,11 @@ type GameState struct {
 
 type Coord struct {
 	Row, Col int
+}
+
+type WordCoords struct {
+    Start [2]int `json:"start"`
+    End   [2]int `json:"end"`
 }
 
 func (g *GameState) getWordFromCoords(start, end Coord) (string, error) {
@@ -174,6 +180,7 @@ func (g *GameState) CheckForWinner(r *Room) (interface{}, bool) {
 			"type": "game_over",
 			"payload": map[string]interface{}{
 				"winner": r.Player1.Number,
+				"unclaimed_words": g.getUnclaimedWordCoords(),
 			},
 		}
 	} else if g.Score[1] >= len(g.Words)/2 + 1 { // Player 2 wins!
@@ -184,6 +191,7 @@ func (g *GameState) CheckForWinner(r *Room) (interface{}, bool) {
 			"type": "game_over",
 			"payload": map[string]interface{}{
 				"winner": r.Player2.Number,
+				"unclaimed_words": g.getUnclaimedWordCoords(),
 			},
 		}
 	} else {
@@ -194,6 +202,18 @@ func (g *GameState) CheckForWinner(r *Room) (interface{}, bool) {
 	return msg, true
 }
 
+func (g *GameState) getUnclaimedWordCoords() []WordCoords {
+	var unclaimedWords []WordCoords
+
+	for _, word := range g.Words {
+		word = strings.ToUpper(word)
+        if _, ok := g.Claimed[word]; !ok {
+            unclaimedWords = append(unclaimedWords, g.wordCoords[word])
+        }
+    }
+
+    return unclaimedWords
+}
 
 
 func (g *GameState) StartGame() interface{} {
@@ -244,6 +264,9 @@ func (g *GameState) generateBoard(GridSize int, words []string) [][]rune {
 			board[i][j] = 0 // empty
 		}
 	}
+
+	// Initialize map
+	g.wordCoords = make(map[string]WordCoords, len(words))
 
 	// Place words randomly
 	for _, word := range words {
@@ -309,11 +332,14 @@ func (g *GameState) generateBoard(GridSize int, words []string) [][]rune {
 
 			// place the word
 			row, col = startRow, startCol
+			startCoord := [2]int{row, col}
 			for _, c := range word {
 				board[row][col] = c
 				row += dirRow
 				col += dirCol
 			}
+			endCoord := [2]int{row-dirRow, col-dirCol}
+			g.wordCoords[word] = WordCoords{startCoord, endCoord}
 
 			success = true
 		}
